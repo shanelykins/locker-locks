@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lock Combo Scanner</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #4cc9f0;
+        }
+
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            color: #4cc9f0;
+            margin-bottom: 12px;
+        }
+
+        /* Camera Section */
+        #camera-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        #video, #preview-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #preview-image {
+            display: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: #4cc9f0;
+            color: #1a1a2e;
+        }
+
+        .btn-secondary {
+            background: #3a3a5c;
+            color: #eee;
+        }
+
+        .btn-success {
+            background: #06d6a0;
+            color: #1a1a2e;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-row .btn {
+            flex: 1;
+        }
+
+        /* Results Section */
+        .result-field {
+            background: #0f0f23;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .result-field label {
+            display: block;
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .result-field .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4cc9f0;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .result-field .value.empty {
+            color: #555;
+            font-style: italic;
+            font-weight: 400;
+        }
+
+        .result-field input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid #3a3a5c;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #4cc9f0;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .result-field input:focus {
+            outline: none;
+            border-color: #4cc9f0;
+        }
+
+        /* Status Messages */
+        .status {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+
+        .status.processing {
+            background: #3a3a5c;
+            color: #ffd166;
+        }
+
+        .status.success {
+            background: #064e3b;
+            color: #06d6a0;
+        }
+
+        .status.error {
+            background: #4a1515;
+            color: #ef4444;
+        }
+
+        .status.hidden {
+            display: none;
+        }
+
+        /* Google Auth */
+        .auth-section {
+            text-align: center;
+        }
+
+        .auth-section p {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 12px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0f0f23;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .user-info span {
+            font-size: 0.85rem;
+            color: #06d6a0;
+        }
+
+        .user-info button {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        /* Sheet URL Input */
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #3a3a5c;
+            border-radius: 8px;
+            background: #0f0f23;
+            color: #eee;
+            font-size: 0.9rem;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #4cc9f0;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #4cc9f0;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Hidden elements */
+        .hidden {
+            display: none !important;
+        }
+
+        /* History */
+        .history-item {
+            background: #0f0f23;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-item .combo {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-weight: 600;
+            color: #4cc9f0;
+        }
+
+        .history-item .serial {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .history-item .time {
+            font-size: 0.75rem;
+            color: #555;
+        }
+
+        .no-history {
+            text-align: center;
+            color: #555;
+            font-size: 0.85rem;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lock Combo Scanner</h1>
+
+        <!-- Camera Card -->
+        <div class="card">
+            <h2>1. Capture Image</h2>
+            <div id="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <img id="preview-image" alt="Captured image">
+            </div>
+            <div id="capture-btn-container">
+                <button id="capture-btn" class="btn btn-primary">Capture Photo</button>
+            </div>
+            <div id="retake-btn-container" class="hidden">
+                <div class="btn-row">
+                    <button id="retake-btn" class="btn btn-secondary">Retake</button>
+                    <button id="scan-btn" class="btn btn-primary">Scan Numbers</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Card -->
+        <div class="card">
+            <h2>2. Extracted Data</h2>
+            <div id="scan-status" class="status hidden"></div>
+
+            <div class="result-field">
+                <label>Combination (1-2-3)</label>
+                <input type="text" id="combo-value" placeholder="--  --  --">
+            </div>
+
+            <div class="result-field">
+                <label>Serial Number (Rectangle)</label>
+                <input type="text" id="serial-value" placeholder="--------">
+            </div>
+
+            <details style="margin-top: 12px;">
+                <summary style="color: #888; font-size: 0.8rem; cursor: pointer;">Show OCR Debug</summary>
+                <pre id="ocr-debug" style="background: #0f0f23; padding: 10px; border-radius: 6px; font-size: 0.7rem; color: #666; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; margin-top: 8px;"></pre>
+            </details>
+        </div>
+
+        <!-- Google Sheets Card -->
+        <div class="card">
+            <h2>3. Send to Google Sheets</h2>
+
+            <div id="auth-section" class="auth-section">
+                <p>Sign in with Google to save directly to your spreadsheet</p>
+                <button id="auth-btn" class="btn btn-primary">Sign in with Google</button>
+            </div>
+
+            <div id="connected-section" class="hidden">
+                <div class="user-info">
+                    <span id="user-email">user@gmail.com</span>
+                    <button id="signout-btn">Sign out</button>
+                </div>
+
+                <div class="input-group">
+                    <label>Google Sheet URL or ID</label>
+                    <input type="text" id="sheet-url" placeholder="Paste your Google Sheet URL here">
+                </div>
+
+                <button id="send-btn" class="btn btn-success" disabled>Send to Sheet</button>
+            </div>
+
+            <div id="send-status" class="status hidden" style="margin-top: 12px;"></div>
+        </div>
+
+        <!-- Recent History -->
+        <div class="card">
+            <h2>Recent Scans</h2>
+            <div id="history-container">
+                <div class="no-history">No scans yet</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden canvas for image capture -->
+    <canvas id="canvas" style="display: none;"></canvas>
+
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client"></script>
+
+    <script>
+        // ===== Configuration =====
+        // You need to replace this with your own Google Cloud OAuth Client ID
+        // Instructions: See README.md
+        const GOOGLE_CLIENT_ID = '1000564015330-8tc2lcou9rb89rqsjoq3oa7u3t8kgu9q.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/cloud-platform openid email';
+
+        // ===== DOM Elements =====
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const previewImage = document.getElementById('preview-image');
+        const captureBtn = document.getElementById('capture-btn');
+        const captureBtnContainer = document.getElementById('capture-btn-container');
+        const retakeBtnContainer = document.getElementById('retake-btn-container');
+        const retakeBtn = document.getElementById('retake-btn');
+        const scanBtn = document.getElementById('scan-btn');
+        const scanStatus = document.getElementById('scan-status');
+        const comboValue = document.getElementById('combo-value');
+        const serialValue = document.getElementById('serial-value');
+        const authSection = document.getElementById('auth-section');
+        const connectedSection = document.getElementById('connected-section');
+        const authBtn = document.getElementById('auth-btn');
+        const signoutBtn = document.getElementById('signout-btn');
+        const userEmail = document.getElementById('user-email');
+        const sheetUrl = document.getElementById('sheet-url');
+        const sendBtn = document.getElementById('send-btn');
+        const sendStatus = document.getElementById('send-status');
+        const historyContainer = document.getElementById('history-container');
+
+        // ===== State =====
+        let stream = null;
+        let capturedImageData = null;
+        let accessToken = null;
+        let tokenClient = null;
+
+        // ===== Camera Functions =====
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('Camera error:', err);
+                showStatus(scanStatus, 'Camera access denied. Please allow camera access.', 'error');
+            }
+        }
+
+        function capturePhoto() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            capturedImageData = canvas.toDataURL('image/jpeg', 0.9);
+
+            previewImage.src = capturedImageData;
+            previewImage.style.display = 'block';
+            video.style.display = 'none';
+
+            captureBtnContainer.classList.add('hidden');
+            retakeBtnContainer.classList.remove('hidden');
+        }
+
+        function retakePhoto() {
+            previewImage.style.display = 'none';
+            video.style.display = 'block';
+            capturedImageData = null;
+
+            retakeBtnContainer.classList.add('hidden');
+            captureBtnContainer.classList.remove('hidden');
+
+            // Clear previous results
+            comboValue.value = '';
+            serialValue.value = '';
+            hideStatus(scanStatus);
+        }
+
+        // ===== OCR Functions =====
+        async function scanImage() {
+            if (!capturedImageData) return;
+
+            // Check if signed in
+            if (!accessToken) {
+                showStatus(scanStatus, 'Please sign in with Google first (for Cloud Vision).', 'error');
+                return;
+            }
+
+            showStatus(scanStatus, '<span class="spinner"></span>Scanning with Cloud Vision...', 'processing');
+            scanBtn.disabled = true;
+
+            try {
+                // Extract base64 data from data URL
+                const base64Image = capturedImageData.split(',')[1];
+
+                // Call Google Cloud Vision API
+                const response = await fetch('https://vision.googleapis.com/v1/images:annotate', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        requests: [{
+                            image: { content: base64Image },
+                            features: [{ type: 'TEXT_DETECTION' }]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error('Vision API error:', error);
+                    if (response.status === 403) {
+                        showStatus(scanStatus, 'Enable Cloud Vision API in Google Cloud Console.', 'error');
+                    } else {
+                        showStatus(scanStatus, 'Vision API error. Try signing in again.', 'error');
+                    }
+                    scanBtn.disabled = false;
+                    return;
+                }
+
+                const data = await response.json();
+                const text = data.responses[0]?.fullTextAnnotation?.text || '';
+                console.log('Cloud Vision OCR Result:', text);
+
+                // Show raw OCR in debug area
+                document.getElementById('ocr-debug').textContent = text;
+
+                const extracted = extractNumbers(text);
+
+                if (extracted.combo) {
+                    comboValue.value = extracted.combo;
+                }
+                if (extracted.serial) {
+                    serialValue.value = extracted.serial;
+                }
+
+                if (extracted.combo || extracted.serial) {
+                    showStatus(scanStatus, 'Numbers extracted! Review and edit if needed.', 'success');
+                } else {
+                    showStatus(scanStatus, 'Could not find numbers. Try a clearer photo.', 'error');
+                }
+
+            } catch (err) {
+                console.error('OCR Error:', err);
+                showStatus(scanStatus, 'Scan failed. Check your connection.', 'error');
+            }
+
+            scanBtn.disabled = false;
+            updateSendButton();
+        }
+
+        function extractNumbers(text) {
+            const result = { combo: null, serial: null };
+
+            // Store raw text for debugging
+            console.log('=== RAW OCR TEXT ===');
+            console.log(text);
+            console.log('====================');
+
+            // Normalize text - preserve line breaks initially
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+            console.log('Lines:', lines);
+
+            // Look for combination pattern: "1 => XX", "2 => XX", "3 => XX"
+            const comboNumbers = [null, null, null];
+
+            for (const line of lines) {
+                // Clean the line
+                const cleanLine = line.replace(/[—–]/g, '-').replace(/\s+/g, ' ');
+
+                // Look for patterns like "1 = > 14" or "1 => 14" or "1= > 14"
+                for (let i = 1; i <= 3; i++) {
+                    if (comboNumbers[i-1] !== null) continue; // Already found
+
+                    const patterns = [
+                        new RegExp(`^${i}\\s*=\\s*>\\s*(\\d{1,2})\\b`),      // "1 = > 14" at start
+                        new RegExp(`^${i}\\s*=>\\s*(\\d{1,2})\\b`),          // "1 => 14" at start
+                        new RegExp(`^${i}\\s*[=-]>\\s*(\\d{1,2})\\b`),       // "1 -> 14" or "1 => 14"
+                        new RegExp(`\\b${i}\\s*=\\s*>\\s*(\\d{1,2})\\b`),    // "1 = > 14" anywhere
+                        new RegExp(`\\b${i}\\s*=>\\s*(\\d{1,2})\\b`),        // "1 => 14" anywhere
+                    ];
+
+                    for (const pattern of patterns) {
+                        const match = cleanLine.match(pattern);
+                        if (match) {
+                            comboNumbers[i-1] = match[1].padStart(2, '0');
+                            console.log(`Found combo ${i}: ${match[1]} from line: "${cleanLine}"`);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (comboNumbers.every(n => n !== null)) {
+                result.combo = comboNumbers.join(' - ');
+            }
+
+            // Look for serial number - the 8-digit number in the rectangle
+            // Avoid barcode numbers (often have / or are very long)
+            const normalized = text.replace(/\s+/g, ' ');
+
+            // First, look for exactly 8 consecutive digits (most common serial format)
+            const eightDigitMatches = normalized.match(/\b(\d{8})\b/g) || [];
+            console.log('8-digit numbers found:', eightDigitMatches);
+
+            // Filter out numbers that are part of barcode format (contain / nearby)
+            for (const num of eightDigitMatches) {
+                // Check if this number appears near a "/" which indicates barcode
+                const idx = normalized.indexOf(num);
+                const context = normalized.substring(Math.max(0, idx - 5), idx + num.length + 5);
+                if (!context.includes('/')) {
+                    result.serial = num;
+                    console.log(`Selected serial: ${num}`);
+                    break;
+                }
+            }
+
+            // If no serial found with patterns, look for any long number
+            if (!result.serial) {
+                const allNumbers = normalized.match(/\d{6,}/g);
+                if (allNumbers) {
+                    // Filter out unlikely candidates
+                    for (const num of allNumbers) {
+                        if (num.length >= 6 && num.length <= 10) {
+                            result.serial = num;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        // ===== Google Auth Functions =====
+        function initGoogleAuth() {
+            if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com') {
+                console.log('Google Client ID not configured');
+                return;
+            }
+
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: SCOPES,
+                callback: (response) => {
+                    if (response.access_token) {
+                        accessToken = response.access_token;
+                        onSignedIn();
+                    }
+                },
+            });
+
+            // Check for existing token in localStorage
+            const savedToken = localStorage.getItem('lock_scanner_token');
+            if (savedToken) {
+                accessToken = savedToken;
+                verifyToken();
+            }
+        }
+
+        async function verifyToken() {
+            try {
+                const response = await fetch('https://www.googleapis.com/oauth2/v1/userinfo', {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    userEmail.textContent = data.email;
+                    authSection.classList.add('hidden');
+                    connectedSection.classList.remove('hidden');
+                } else {
+                    signOut();
+                }
+            } catch (e) {
+                signOut();
+            }
+        }
+
+        function signIn() {
+            if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com') {
+                alert('Google Sign-in not configured.\n\nSee README.md for setup instructions.');
+                return;
+            }
+            tokenClient.requestAccessToken();
+        }
+
+        async function onSignedIn() {
+            localStorage.setItem('lock_scanner_token', accessToken);
+
+            // Get user info
+            try {
+                const response = await fetch('https://www.googleapis.com/oauth2/v1/userinfo', {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                const data = await response.json();
+                userEmail.textContent = data.email;
+            } catch (e) {
+                userEmail.textContent = 'Connected';
+            }
+
+            authSection.classList.add('hidden');
+            connectedSection.classList.remove('hidden');
+
+            // Restore saved sheet URL
+            const savedUrl = localStorage.getItem('lock_scanner_sheet_url');
+            if (savedUrl) {
+                sheetUrl.value = savedUrl;
+            }
+
+            updateSendButton();
+        }
+
+        function signOut() {
+            accessToken = null;
+            localStorage.removeItem('lock_scanner_token');
+            authSection.classList.remove('hidden');
+            connectedSection.classList.add('hidden');
+        }
+
+        // ===== Google Sheets Functions =====
+        function extractSheetId(urlOrId) {
+            // If it's already just an ID
+            if (/^[a-zA-Z0-9_-]{20,}$/.test(urlOrId)) {
+                return urlOrId;
+            }
+            // Extract from URL
+            const match = urlOrId.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            return match ? match[1] : null;
+        }
+
+        async function sendToSheet() {
+            const combo = comboValue.value.trim();
+            const serial = serialValue.value.trim();
+
+            if (!combo && !serial) {
+                showStatus(sendStatus, 'No data to send. Scan an image first.', 'error');
+                return;
+            }
+
+            const sheetId = extractSheetId(sheetUrl.value.trim());
+            if (!sheetId) {
+                showStatus(sendStatus, 'Invalid Google Sheet URL.', 'error');
+                return;
+            }
+
+            // Save URL for later
+            localStorage.setItem('lock_scanner_sheet_url', sheetUrl.value.trim());
+
+            showStatus(sendStatus, '<span class="spinner"></span>Sending to sheet...', 'processing');
+            sendBtn.disabled = true;
+
+            try {
+                const timestamp = new Date().toLocaleString();
+                const values = [[timestamp, combo, serial]];
+
+                const response = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A:C:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ values }),
+                    }
+                );
+
+                if (response.ok) {
+                    showStatus(sendStatus, 'Added to spreadsheet!', 'success');
+                    addToHistory(combo, serial);
+
+                    // Clear for next scan
+                    setTimeout(() => {
+                        retakePhoto();
+                    }, 1500);
+                } else {
+                    const error = await response.json();
+                    console.error('Sheets API error:', error);
+
+                    if (response.status === 403) {
+                        showStatus(sendStatus, 'Access denied. Make sure you have edit access to the sheet.', 'error');
+                    } else if (response.status === 404) {
+                        showStatus(sendStatus, 'Sheet not found. Check the URL.', 'error');
+                    } else {
+                        showStatus(sendStatus, 'Failed to send. Try signing in again.', 'error');
+                    }
+                }
+            } catch (err) {
+                console.error('Send error:', err);
+                showStatus(sendStatus, 'Network error. Please try again.', 'error');
+            }
+
+            sendBtn.disabled = false;
+        }
+
+        // ===== History Functions =====
+        function addToHistory(combo, serial) {
+            const history = JSON.parse(localStorage.getItem('lock_scanner_history') || '[]');
+            history.unshift({
+                combo,
+                serial,
+                time: new Date().toLocaleTimeString()
+            });
+            // Keep only last 10
+            if (history.length > 10) history.pop();
+            localStorage.setItem('lock_scanner_history', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('lock_scanner_history') || '[]');
+
+            if (history.length === 0) {
+                historyContainer.innerHTML = '<div class="no-history">No scans yet</div>';
+                return;
+            }
+
+            historyContainer.innerHTML = history.map(item => `
+                <div class="history-item">
+                    <div>
+                        <div class="combo">${item.combo || '--'}</div>
+                        <div class="serial">${item.serial || '--'}</div>
+                    </div>
+                    <div class="time">${item.time}</div>
+                </div>
+            `).join('');
+        }
+
+        // ===== UI Helpers =====
+        function showStatus(element, message, type) {
+            element.innerHTML = message;
+            element.className = `status ${type}`;
+        }
+
+        function hideStatus(element) {
+            element.className = 'status hidden';
+        }
+
+        function updateSendButton() {
+            const hasData = comboValue.value.trim() || serialValue.value.trim();
+            const hasSheet = sheetUrl.value.trim();
+            const hasAuth = accessToken !== null;
+            sendBtn.disabled = !(hasData && hasSheet && hasAuth);
+        }
+
+        // ===== Event Listeners =====
+        captureBtn.addEventListener('click', capturePhoto);
+        retakeBtn.addEventListener('click', retakePhoto);
+        scanBtn.addEventListener('click', scanImage);
+        authBtn.addEventListener('click', signIn);
+        signoutBtn.addEventListener('click', signOut);
+        sendBtn.addEventListener('click', sendToSheet);
+
+        sheetUrl.addEventListener('input', updateSendButton);
+        comboValue.addEventListener('input', updateSendButton);
+        serialValue.addEventListener('input', updateSendButton);
+
+        // ===== Initialize =====
+        document.addEventListener('DOMContentLoaded', () => {
+            startCamera();
+            initGoogleAuth();
+            renderHistory();
+        });
+    </script>
+</body>
+</html>
